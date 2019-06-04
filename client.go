@@ -59,6 +59,10 @@ func (client *gocloak) getRequestWithBasicAuth(clientID string, clientSecret str
 		SetHeader("Authorization", "Basic "+httpBasicAuth)
 }
 
+func (client *gocloak) getRequestWithNoAuth() *resty.Request {
+	return client.restyClient.R()
+}
+
 func checkForError(resp *resty.Response, err error) error {
 	if err != nil {
 		return err
@@ -359,6 +363,31 @@ func (client *gocloak) Login(clientID string, clientSecret string, realm string,
 
 	return &result, nil
 }
+
+func (client *gocloak) LoginPublic(clientID string, realm string, username string, password string) (*JWT, error) {
+	var result JWT
+	resp, err := client.getRequestWithNoAuth().
+		SetFormData(map[string]string{
+			"grant_type": "password",
+			"client_id": "xSpaceClient",
+			"username":   username,
+			"password":   password,
+		}).
+		SetResult(&result).
+		Post(client.getRealmURL(realm, tokenEndpoint))
+
+	if err := checkForError(resp, err); err != nil {
+		return nil, err
+	}
+
+	if result.AccessToken == "" {
+		return nil, errors.New("Authentication Failed")
+	}
+
+	return &result, nil
+}
+
+
 
 // Logout logs out users with refresh token
 func (client *gocloak) Logout(clientID string, clientSecret string, realm string, refreshToken string) error {
